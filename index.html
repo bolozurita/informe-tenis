@@ -53,6 +53,10 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tabs a:not([aria-current]):hover{background:var(--soft)}
 .theme{width:38px;height:38px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;display:grid;place-items:center;font-size:1rem;line-height:1}
 .theme:hover{border-color:var(--court)}
+.cloud{display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted)}
+.cloud .dot{width:9px;height:9px;border-radius:50%;background:var(--idle);flex:none}
+.cloud .dot.ok{background:var(--good)} .cloud .dot.busy{background:var(--warn)} .cloud .dot.err{background:var(--clay)}
+.btn.sm{padding:7px 12px;font-size:.88rem}
 .pick{display:flex;gap:8px;flex-wrap:wrap}
 select,input[type=text],input[type=number],input[type=date],input[type=url],textarea{
   background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
@@ -189,6 +193,7 @@ section[id^="sec-"]{scroll-margin-top:130px}
     <select id="sel-player" aria-label="Alumno"></select>
     <select id="sel-period" aria-label="Período"></select>
   </div>
+  <div class="cloud" id="cloud" hidden></div>
   <button type="button" class="theme" id="theme" aria-label="Cambiar tema" title="Tema: automático">◐</button>
   <nav class="tabs" aria-label="Vista">
     <a href="#informe" id="tab-informe">Informe para padres</a>
@@ -291,9 +296,13 @@ let S,saveOk=true;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
 if(!S||!S.players||!S.players.length)S=seed();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));saveOk=true}catch(e){saveOk=false}
-  const el=document.getElementById('saved');if(el){el.textContent=saveOk?'Guardado en este navegador · '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'No se pudo guardar: los cambios se perderán al cerrar la página';el.classList.toggle('flash',saveOk);clearTimeout(save.t);save.t=setTimeout(()=>el.classList.remove('flash'),1200)}}
+  const cl=window.cloud&&window.cloud.on;if(cl)window.cloud.queue();
+  const el=document.getElementById('saved');if(el){el.textContent=cl?'Guardando en la nube…':saveOk?'Guardado en este navegador · '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'No se pudo guardar: los cambios se perderán al cerrar la página';el.classList.toggle('flash',saveOk);clearTimeout(save.t);save.t=setTimeout(()=>el.classList.remove('flash'),1200)}}
 
 const $=id=>document.getElementById(id);
+// Puente para firebase.js: leer el estado y reemplazarlo con lo que llega de la nube
+window.app={get:()=>S,seed,load(d){if(!d||!Array.isArray(d.players)||!d.players.length)return;S=d;if(!S.period)S.period=PERIODS[2][0];
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}render()},clearLocal(){try{localStorage.removeItem(KEY)}catch(e){}}};
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const player=()=>S.players.find(p=>p.id===S.player)||S.players[0];
 function report(create){const p=player();if(!p.reports[S.period]&&create){p.reports[S.period]=blank()}return p.reports[S.period]}
@@ -471,5 +480,6 @@ $('theme').addEventListener('click',()=>{const i=THEMES.findIndex(x=>x[0]===th);
 applyTheme();
 render();
 </script>
+<script type="module" src="firebase.js"></script>
 </body>
 </html>
